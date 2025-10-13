@@ -70,6 +70,7 @@ prisma/
    DATABASE_URL="postgresql://username:password@localhost:5432/alerts_db?schema=public"
    NODE_ENV="development"
    PORT=3000
+   HOST=0.0.0.0
    ```
 
 3. **Generate Prisma Client**
@@ -84,8 +85,11 @@ prisma/
 
 5. **Start Development Server**
    ```bash
-   yarn start
+   yarn start          # Production mode
+   yarn start:dev      # Development mode with hot reload
    ```
+
+   The server will be accessible from any host on your network at `http://0.0.0.0:3000`
 
 ## Prisma Commands
 

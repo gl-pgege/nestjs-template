@@ -14,16 +14,14 @@ async function bootstrap() {
 
   app.enableCors();
 
-  if (process.env.SWAGGER_ENABLED === 'true') {
-    const config = new DocumentBuilder()
-      .setTitle('NestJS Template API')
-      .setDescription('API documentation for NestJS template with Prisma')
-      .setVersion('1.0')
-      .addTag('api')
-      .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
-  }
+  const config = new DocumentBuilder()
+    .setTitle('NestJS Financial Alerts API')
+    .setDescription('API documentation for financial alerts system with comprehensive schema')
+    .setVersion('1.0')
+    .addTag('Health', 'System health endpoints')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

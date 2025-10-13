@@ -1,0 +1,230 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/alerts-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EntityTypeEnum {
+  person
+  business
+  government
+  other
+
+  @@map("entity_type_enum")
+}
+
+enum AccountTypeEnum {
+  personal
+  business
+  checking
+  savings
+  credit
+  investment
+  other
+
+  @@map("account_type_enum")
+}
+
+enum AlertStatusEnum {
+  open
+  in_progress
+  resolved
+  closed
+
+  @@map("alert_status_enum")
+}
+
+
+enum DeviceTypeEnum {
+  Mobile
+  Web
+  ATM
+  Branch
+  Other
+  teller
+  mobile_app
+  desktop_browser
+
+  @@map("device_type_enum")
+}
+
+model Entity {
+  entityId    String          @id @map("entity_id") @db.VarChar(50)
+  entityName  String          @map("entity_name") @db.VarChar(255)
+  entityType  EntityTypeEnum  @map("entity_type")
+  isCustomer  Boolean         @default(false) @map("is_customer")
+  address     String?         @db.VarChar(255)
+  country     String?         @db.VarChar(100)
+  createdAt   DateTime?       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime?       @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  accounts                Account[]
+  accountActivityEntities AccountActivityEntity[]
+  sentTransactions        Transaction[] @relation("SenderEntity")
+  receivedTransactions    Transaction[] @relation("ReceiverEntity")
+
+  @@map("entity")
+}
+
+model Account {
+  accountId     String         @id @map("account_id") @db.VarChar(50)
+  accountNumber String         @unique @map("account_number") @db.VarChar(50)
+  entityId      String         @map("entity_id") @db.VarChar(50)
+  accountType   AccountTypeEnum @map("account_type")
+  createdAt     DateTime?       @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime?       @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  entity                  Entity        @relation(fields: [entityId], references: [entityId], onDelete: Cascade)
+  alerts                  Alert[]       @relation("AssociatedAccount")
+  accountActivities       AccountActivity[]
+  sentTransactions        Transaction[] @relation("SenderAccount")
+  receivedTransactions    Transaction[] @relation("ReceiverAccount")
+
+  @@map("account")
+}
+
+model AccountActivity {
+  activityId             String                    @id @map("activity_id") @db.VarChar(50)
+  accountId              String                    @map("account_id") @db.VarChar(50)
+  dateTime               DateTime                  @map("date_time") @db.Timestamp(6)
+  activityType           String                    @default("login") @map("activity_type") @db.VarChar(50)
+  description            String?
+  deviceId               String?                   @map("device_id") @db.VarChar(255)
+  ip                     String?                   @db.VarChar(45)
+  altitude               Decimal?                  @db.Decimal(10, 2)
+  latitude               Decimal?                  @db.Decimal(9, 6)
+  longitude              Decimal?                  @db.Decimal(9, 6)
+  geoLocation            String?                   @map("geo_location") @db.VarChar(255)
+  deviceType             DeviceTypeEnum?           @map("device_type")
+  browser                String?                   @db.VarChar(100)
+  browserVersion         String?                   @map("browser_version") @db.VarChar(50)
+  osFamily               String?                   @map("os_family") @db.VarChar(50)
+  osVersion              String?                   @map("os_version") @db.VarChar(50)
+  screenResolution       String?                   @map("screen_resolution") @db.VarChar(50)
+  sessionId              String                    @map("session_id") @db.VarChar(50)
+  timezone               String?                   @db.VarChar(50)
+  userAgent              String?                   @map("user_agent")
+  createdAt              DateTime?                 @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime?                 @default(now()) @map("updated_at") @db.Timestamp(6)
+  
+  // Relations
+  account                Account                   @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+  entities               AccountActivityEntity[]
+
+  @@map("account_activity")
+}
+
+model AccountActivityEntity {
+  activityId      String           @map("activity_id") @db.VarChar(50)
+  entityId        String           @map("entity_id") @db.VarChar(50)
+  createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamp(6)
+  
+  // Relations
+  accountActivity AccountActivity @relation(fields: [activityId], references: [activityId], onDelete: Cascade)
+  entity          Entity          @relation(fields: [entityId], references: [entityId], onDelete: Cascade)
+
+  @@id([activityId, entityId])
+  @@map("account_activity_entity")
+}
+
+model Alert {
+  alertId             String            @id @map("alert_id") @db.VarChar(50)
+  dateTime            DateTime          @map("date_time") @db.Timestamp(6)
+  description         String            @db.Text
+  riskFactors         String?           @map("risk_factors") @db.Text
+  actionsRequired     String?           @map("actions_required") @db.Text
+  conclusion          String?           @db.Text
+  status              AlertStatusEnum   @default(open)
+  associatedAccountId String?           @map("associated_account_id") @db.VarChar(50)
+  assignedToEmail     String?           @map("assigned_to_email") @db.VarChar(255)
+  assignedAt          DateTime?         @map("assigned_at") @db.Timestamp(6)
+  createdAt           DateTime?         @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime?         @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  associatedAccount   Account?                  @relation("AssociatedAccount", fields: [associatedAccountId], references: [accountId], onDelete: SetNull)
+  transactionLinks    AlertTransactionLink[]
+  investigationSummary InvestigationSummary?
+
+  @@map("alert")
+}
+
+model InvestigationSummary {
+  alertId        String    @id @map("alert_id") @db.VarChar(50)
+  recommendation String    @db.Text
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime? @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  alert          Alert              @relation(fields: [alertId], references: [alertId], onDelete: Cascade)
+  actions        InvestigationAction[]
+
+  @@map("investigation_summary")
+}
+
+model InvestigationAction {
+  actionId     String    @id @map("action_id") @db.VarChar(50)
+  alertId      String    @map("alert_id") @db.VarChar(50)
+  title        String    @db.VarChar(255)
+  description  String    @db.Text
+  priority     String    @default("medium") @db.VarChar(20)
+  status       String    @default("pending") @db.VarChar(20)
+  actionConfig String    @map("action_config") @db.Text
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime? @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  summary      InvestigationSummary @relation(fields: [alertId], references: [alertId], onDelete: Cascade)
+
+  @@map("investigation_action")
+}
+
+model Transaction {
+  transactionId     String            @id @map("transaction_id") @db.VarChar(50)
+  dateTime          DateTime          @map("date_time") @db.Timestamp(6)
+  amount            Decimal           @db.Decimal(15, 2)
+  currency          String            @default("USD") @db.Char(3)
+  transactionType   String            @map("transaction_type") @db.VarChar(50)
+  memo              String?           @db.Text
+  purpose           String?           @db.Text
+  senderEntityId    String?           @map("sender_entity_id") @db.VarChar(50)
+  receiverEntityId  String            @map("receiver_entity_id") @db.VarChar(50)
+  senderAccountId   String?           @map("sender_account_id") @db.VarChar(50)
+  receiverAccountId String?           @map("receiver_account_id") @db.VarChar(50)
+  deviceType        DeviceTypeEnum?   @map("device_type")
+  deviceId          String?           @map("device_id") @db.VarChar(255)
+  intermediaryBank  String?           @map("intermediary_bank") @db.VarChar(255)
+  createdAt         DateTime?         @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime?         @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  senderEntity      Entity?                   @relation("SenderEntity", fields: [senderEntityId], references: [entityId], onDelete: SetNull)
+  receiverEntity    Entity                    @relation("ReceiverEntity", fields: [receiverEntityId], references: [entityId], onDelete: Cascade)
+  senderAccount     Account?                  @relation("SenderAccount", fields: [senderAccountId], references: [accountId], onDelete: SetNull)
+  receiverAccount   Account?                  @relation("ReceiverAccount", fields: [receiverAccountId], references: [accountId], onDelete: SetNull)
+  alertLinks        AlertTransactionLink[]
+
+  @@map("transaction")
+}
+
+model AlertTransactionLink {
+  alertId       String    @map("alert_id") @db.VarChar(50)
+  transactionId String    @map("transaction_id") @db.VarChar(50)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  alert         Alert       @relation(fields: [alertId], references: [alertId], onDelete: Cascade)
+  transaction   Transaction @relation(fields: [transactionId], references: [transactionId], onDelete: Cascade)
+
+  @@id([alertId, transactionId])
+  @@map("alert_transaction_link")
+}

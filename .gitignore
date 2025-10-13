@@ -93,5 +93,4 @@ jspm_packages/
 .env*.local
 
 # Prisma
-/prisma/primary/migrations
-/prisma/secondary/migrations
+/prisma/alerts/migrations

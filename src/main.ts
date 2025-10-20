@@ -12,7 +12,9 @@ async function bootstrap() {
     transform: true,
   }));
 
-  app.enableCors();
+  app.enableCors({
+    origin: '*'
+  });
 
   const config = new DocumentBuilder()
     .setTitle('NestJS Financial Alerts API')
